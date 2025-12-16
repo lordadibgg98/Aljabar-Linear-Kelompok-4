@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard Prediksi Suhu BMKG (LSM)</title>
+
+    <!-- Gunakan Chart.js versi yang stabil -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    
+    <style>
+        /* Gaya CSS dari tampilan.html */
+        body {
+            background: #0f1b2d;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: auto;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin: 0 0 5px;
+            color: #4fc3f7;
+            text-align: center;
+        }
+
+        h2 {
+            color: #90caf9;
+            font-size: 15px;
+            margin: 0 0 20px;
+            text-align: center;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 20px;
+            min-height: 800px;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-rows: auto auto;
+            gap: 20px;
+        }
+
+        .chart-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            height: 320px;
+        }
+
+        @media(max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            .chart-row {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+        }
+
+        .card {
+            background: #1a2a3f;
+            border-radius: 12px;
+            padding: 18px;
+            border: 1px solid #2a3b5c;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, .2);
+            margin-bottom: 15px;
+        }
+
+        .model-info, .data-info, .stats-table, .model-eq, .stats-accuracy {
+            background: #152238;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+        
+        .model-eq {
+            border-left: 3px solid #f9a825;
+        }
+
+        .slider-box {
+            margin-top: 15px;
+        }
+
+        input[type=range] {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 8px;
+            background: #2a3b5c;
+            border-radius: 5px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4fc3f7;
+            cursor: pointer;
+            border: 2px solid #1a2a3f;
+        }
+
+        .slider-value {
+            font-size: 20px;
+            text-align: center;
+            color: #4fc3f7;
+            margin-top: 8px;
+            font-weight: bold;
+        }
+        
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            font-size: 12px;
+        }
+        th, td {
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid #2a3b5c;
+        }
+        th {
+            background-color: #2a3b5c;
+            color: #90caf9;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .status-badge.akurasi { background: #388e3c; color: #c8e6c9; }
+        .status-badge.netral { background: #fbc02d; color: #fffde7; }
+        .status-badge.perhatian { background: #f57c00; color: #fffde7; }
+        
+        .error-positive { color: #81c784; }
+        .error-negative { color: #e57373; }
+        .error-neutral { color: #90caf9; }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .residual-container {
+            position: relative;
+            height: 320px;
+            width: 100%;
+        }
+
+        canvas {
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.1);
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .legend {
+            margin-top: 6px;
+            font-size: 12px;
+            color: #b0bec5;
+            text-align: center;
+        }
+
+        .footer {
+            margin-top: 20px;
+            padding: 15px;
+            background: #152238;
+            border-left: 4px solid #29b6f6;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 13px;
+        }
+        
+        .section-header {
+            color: #4fc3f7;
+            font-size: 16px;
+            margin: 12px 0 8px;
+            border-bottom: 1px dashed #2a3b5c;
+            padding-bottom: 4px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: #29b6f6;
+            color: white;
+            border: none;
+            padding: 7px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.3s;
+            min-width: 160px;
+        }
+        
+        button:hover {
+            background: #0288d1;
+        }
+        
+        button.reset {
+            background: #f9a825;
+            color: black;
+        }
+        
+        button.reset:hover {
+            background: #f57f17;
+        }
+        
+        button.toggle {
+            background: #9c27b0;
+            color: white;
+        }
+        
+        button.toggle:hover {
+            background: #7b1fa2;
+        }
+        
+        /* Style untuk grafik residual */
+        .residual-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px dashed #2a3b5c;
+        }
+        
+        .stats-box {
+            background: #152238;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        
+        .stats-box h4 {
+            margin: 0 0 8px 0;
+            color: #4fc3f7;
+            font-size: 14px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        
+        .stat-item {
+            background: #1a2a3f;
+            padding: 8px;
+            border-radius: 6px;
+            border-left: 3px solid #29b6f6;
+        }
+        
+        .stat-label {
+            color: #90caf9;
+            font-size: 11px;
+        }
+        
+        .stat-value {
+            color: #e0e0e0;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>🌡️ DASHBOARD PREDIKSI SUHU BMKG</h1>
+        <h2>(Regresi Linear & Polynomial - Least Squares Method)</h2>
+
+        <div class="main-grid">
+            <!-- Kolom Kiri: Kontrol dan Informasi -->
+            <div>
+                <div class="data-info">
+                    <h3 class="section-header">📋 INFORMASI DATASET</h3>
+                    📍 Sumber: BMKG Stasiun Raja Haji Fisabilillah<br>
+                    📅 Periode: 1-30 November 2025 (<span id="dataCount">30</span> observasi)<br>
+                    📊 Lokasi: 0.92270°N, 104.52890°E | Variabel: Kelembaban vs Suhu
+                </div>
+
+                <div class="card">
+                    <h3 class="section-header">🔢 INPUT PARAMETER</h3>
+                    <div class="slider-box">
+                        <label>Kelembaban (%)</label>
+                        <input type="range" min="70" max="95" step="1" value="85" id="humSlider" oninput="updatePrediction(this.value)">
+                        <div class="slider-value"><span id="humVal">85</span>%</div>
+                    </div>
+                    <div class="stats-box">
+                        <h4>📊 Statistik Kelembaban</h4>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-label">Rata-rata</div>
+                                <div class="stat-value" id="avgHum">85.0%</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Min - Max</div>
+                                <div class="stat-value" id="rangeHum">74% - 95%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="section-header">📊 HASIL PREDIKSI REAL-TIME (RH=<span id="currentRH">85</span>%)</h3>
+                    <table class="stats-table">
+                        <thead>
+                            <tr>
+                                <th>MODEL</th>
+                                <th>PREDIKSI (°C)</th>
+                                <th>ERROR (°C)</th>
+                                <th>STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>📈 LINEAR</td>
+                                <td id="predLinear">27.4°C</td>
+                                <td id="errorLinear" class="error-neutral">+0.04°C</td>
+                                <td><span id="statusLinear" class="status-badge akurasi">✅ AKURAT</span></td>
+                            </tr>
+                            <tr>
+                                <td>📊 POLYNOMIAL</td>
+                                <td id="predPoly">27.2°C</td>
+                                <td id="errorPoly" class="error-neutral">-0.16°C</td>
+                                <td><span id="statusPoly" class="status-badge akurasi">✅ AKURAT</span></td>
+                            </tr>
+                            <tr>
+                                <td>📉 RATA-RATA</td>
+                                <td id="predAvg">27.4°C</td>
+                                <td id="errorAvg" class="error-neutral">±0.00°C</td>
+                                <td><span id="statusAvg" class="status-badge netral">⚠️ NETRAL</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="model-eq">
+                    <h3 class="section-header">🧮 MODEL MATEMATIKA</h3>
+                    <div id="linearEq">LINEAR: T = </div>
+                    <div id="polyEq">POLYNOMIAL (Deg 2): T = </div>
+                    <p style="margin-top:8px; font-size:11px; color:#b0bec5">
+                        Keterangan: <br>
+                        • Setiap kenaikan 1% kelembaban (RH) → suhu turun <b id="mCoeff">-0.1086°C</b><br>
+                        • <b id="rSqLinear">31.2%</b> variasi suhu dapat dijelaskan oleh kelembaban (Model Linear)
+                    </p>
+                </div>
+                
+                <div class="card">
+                    <h3 class="section-header">📋 TABEL DATA SAMPLE (5 dari 30)</h3>
+                    <table id="sampleTable">
+                        <thead>
+                            <tr>
+                                <th>TANGGAL</th>
+                                <th>KELEMBABAN</th>
+                                <th>SUHU AKTUAL</th>
+                                <th>PREDIKSI LIN.</th>
+                                <th>ERROR</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Data akan diisi oleh JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="card">
+                    <h3 class="section-header">🎯 STATISTIK AKURASI MODEL</h3>
+                    <table id="accuracyTable" class="stats-accuracy">
+                        <thead>
+                            <tr>
+                                <th>METRIK</th>
+                                <th>MODEL LINEAR</th>
+                                <th>MODEL POLYNOMIAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Data akan diisi oleh JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+            <!-- Kolom Kanan: Grafik -->
+            <div class="charts-grid">
+                <!-- Baris 1: Dua grafik regresi -->
+                <div class="card">
+                    <h3 style="color:#4fc3f7;margin-top:0; margin-bottom:15px;">GRAFIK VISUALISASI REGRESI</h3>
+                    
+                    <div class="chart-row">
+                        <div>
+                            <h4 style="color:#90caf9;margin-top:0;text-align:center; margin-bottom:10px;">📈 REGRESI LINEAR</h4>
+                            <div class="chart-container">
+                                <canvas id="chartLinear"></canvas>
+                            </div>
+                            <div class="legend">● Data BMKG &nbsp;&nbsp;— Garis Regresi Linear &nbsp;&nbsp;★ Prediksi</div>
+                        </div>
+                        
+                        <div>
+                            <h4 style="color:#90caf9;margin-top:0;text-align:center; margin-bottom:10px;">📊 REGRESI POLYNOMIAL (Deg 2)</h4>
+                            <div class="chart-container">
+                                <canvas id="chartPoly"></canvas>
+                            </div>
+                            <div class="legend">● Data BMKG &nbsp;&nbsp;— Kurva Polinomial &nbsp;&nbsp;★ Prediksi</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Baris 2: Grafik Residual (TERPISAH) -->
+                <div class="card residual-section">
+                    <h4 style="color:#90caf9;margin-top:0;text-align:center; margin-bottom:10px;">📉 RESIDUAL PLOT (Error Analysis)</h4>
+                    <div class="residual-container">
+                        <canvas id="chartResidual"></canvas>
+                    </div>
+                    <div class="legend">● Error Linear &nbsp;&nbsp;— Garis Nol (Prediksi Sempurna) &nbsp;&nbsp;▲ Error Positif &nbsp;&nbsp;▼ Error Negatif</div>
+                    
+                    <!-- Statistik Residual -->
+                    <div class="stats-box">
+                        <h4>📊 Statistik Residual</h4>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-label">Mean Error</div>
+                                <div class="stat-value" id="meanError">0.00°C</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Std Dev Error</div>
+                                <div class="stat-value" id="stdError">0.00°C</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Max Positive</div>
+                                <div class="stat-value" id="maxPosError">+0.00°C</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Max Negative</div>
+                                <div class="stat-value" id="maxNegError">-0.00°C</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tombol Aksi -->
+                    <div class="button-group">
+                        <button onclick="downloadCSV()">📥 Download Prediksi CSV</button>
+                        <button class="reset" onclick="resetSlider()">🔄 Reset Input</button>
+                        <button class="toggle" onclick="toggleResidualType()">🔄 Tampilkan Error Poly</button>
+                        <button onclick="showErrorDistribution()">📊 Distribusi Error</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            Kelompok 4 - Penerapan PDE dan LSM | Versi: 1.0 (Deadline: 16 Des 2025) <br>
+            • Rauf Hidayat • Jova Rifana • Januar Suyasmin Saputra • Muhammad Adib Haryadi
+        </div>
+        
+    </div>
+    
+    <script src="script.js"></script>
+
+</body>
+</html>
